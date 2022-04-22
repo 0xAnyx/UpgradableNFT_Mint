@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: None
-
+pragma solidity ^0.8.7;
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "./ERC721AUpgradable.sol";
@@ -16,9 +16,9 @@ contract LandNFT is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721AUpgra
     uint16 public ownerCap;
     uint16 public whitelistCap;
 
-    uint16 public ownerMinted;
-    uint16 public whiteListMinted;
-    uint16 public publicMinted;
+    uint256 public ownerMinted;
+    uint256 public whiteListMinted;
+    uint256 public publicMinted;
 
     uint256 public maxSupply;
     uint256 public whitelistSpotPrice;
@@ -60,7 +60,7 @@ contract LandNFT is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721AUpgra
     function ownerMint(uint256 _amount) external onlyOwner nonReentrant{
         require(_amount + ownerMinted <= ownerCap, "Owner Mint Limit Exceeded");
         require(_amount + totalSupply() <= maxSupply, "All Tokens Minted");
-        ownerMint += _amount;
+        ownerMinted += _amount;
         _mint(_msgSender(), _amount);
     }
 
@@ -79,7 +79,7 @@ contract LandNFT is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721AUpgra
         require(block.timestamp >= whitelistEndTime, "Whitelist Period Not Over");
         require(_amount + totalSupply() <= maxSupply, "All Tokens Minted");
         require(msg.value == _amount * publicMintPrice, "Pay Exact Amount");
-        publicMint += 1;
+        publicMinted += 1;
         userPublicMintTokensBought[_msgSender()] += _amount;
         _mint(_msgSender(), _amount);
     }
@@ -113,11 +113,11 @@ contract LandNFT is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721AUpgra
         designatedSigner = _signer;
     }
 
-    function setOwnerCap(uint256 _amount) external onlyOwner {
+    function setOwnerCap(uint16 _amount) external onlyOwner {
         ownerCap = _amount;
     }
 
-    function setWhiteListCap(uint256 _amount) external onlyOwner {
+    function setWhiteListCap(uint16 _amount) external onlyOwner {
         whitelistCap = _amount;
     }
 
@@ -147,7 +147,7 @@ contract LandNFT is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721AUpgra
     }
 
     function _baseURI() internal view virtual override returns (string memory) {
-        return baseTokenURI;
+        return baseURI;
     }
 
 }
