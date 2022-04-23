@@ -49,7 +49,7 @@ contract LandNFT is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721AUpgra
         treasure = _treasure;
         designatedSigner = _designatedSigner;
         publicMintPrice = 750 ether;
-        whitelistSpotPrice = 187.5 ether;
+        whitelistSpotPrice = 562.5 ether;
     }
 
 
