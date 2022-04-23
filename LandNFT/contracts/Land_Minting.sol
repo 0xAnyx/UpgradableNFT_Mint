@@ -15,6 +15,7 @@ contract LandNFT is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721AUpgra
 
     uint16 public ownerCap;
     uint16 public whitelistCap;
+    uint16 public maxWhitelistSpotForEach;
 
     uint256 public ownerMinted;
     uint256 public whiteListMinted;
@@ -28,7 +29,6 @@ contract LandNFT is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721AUpgra
     uint256 public whitelistEndTime;
 
     mapping(address => uint256) public userWhiteListSpotBought;
-    mapping(address => uint256) public userPublicMintTokensBought;
 
     function initialize(string memory _name, string memory _symbol, uint256 _startTime,
         address payable _treasure, address _designatedSigner) public initializer {
@@ -43,13 +43,14 @@ contract LandNFT is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721AUpgra
         maxSupply = 5555;
         ownerCap = 50;
         whitelistCap = 50;
+        maxWhitelistSpotForEach = 5;
         whitelistStartTime = _startTime;
         whitelistEndTime = 24 hours;
         whitelistEndTime += _startTime;
         treasure = _treasure;
         designatedSigner = _designatedSigner;
         publicMintPrice = 750 ether;
-        whitelistSpotPrice = 562.5 ether;
+        whitelistSpotPrice = 187.5 ether;
     }
 
 
@@ -57,18 +58,19 @@ contract LandNFT is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721AUpgra
     ///@notice Minting Functions ///
     ///////////////////////////////
 
-    function ownerMint(uint256 _amount) external onlyOwner nonReentrant{
+    function ownerMint(uint256 _amount, address _to) external onlyOwner nonReentrant{
         require(_amount + ownerMinted <= ownerCap, "Owner Mint Limit Exceeded");
         require(_amount + totalSupply() <= maxSupply, "All Tokens Minted");
         ownerMinted += _amount;
-        _mint(_msgSender(), _amount);
+        _mint(_to, _amount);
     }
 
     function whiteListMint(WhiteList memory whitelist, uint256 _amount) external payable nonReentrant{
         require(block.timestamp >= whitelistStartTime && block.timestamp <= whitelistEndTime, "Whitelist Period Over");
         require(_amount + whiteListMinted <= whitelistCap, "Whitelist Mint Limit Exceeded");
+        require(_amount + userWhiteListSpotBought[whitelist.userAddress] <= maxWhitelistSpotForEach,
+            "Max Limit Reached");
         require(getSigner(whitelist) == designatedSigner, "Designated Signer didn't match");
-        require(whitelist.userAddress == _msgSender(), "Invalid Signature");
         require(msg.value == _amount * whitelistSpotPrice, "Pay Exact Amount");
         whiteListMinted += _amount;
         userWhiteListSpotBought[whitelist.userAddress] += _amount;
@@ -79,8 +81,7 @@ contract LandNFT is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721AUpgra
         require(block.timestamp >= whitelistEndTime, "Whitelist Period Not Over");
         require(_amount + totalSupply() <= maxSupply, "All Tokens Minted");
         require(msg.value == _amount * publicMintPrice, "Pay Exact Amount");
-        publicMinted += 1;
-        userPublicMintTokensBought[_msgSender()] += _amount;
+        publicMinted += _amount;
         _mint(_msgSender(), _amount);
     }
 
@@ -89,7 +90,7 @@ contract LandNFT is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721AUpgra
     ////////////////////////////
 
     function withdrawONE() external onlyOwner{
-        require(treasure != address(0), "Treasure address not set");
+        require(address(this).balance != 0, "No Funds To Withdraw");
         treasure.transfer(address(this).balance);
     }
 
@@ -131,6 +132,10 @@ contract LandNFT is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721AUpgra
 
     function setPublicMintTokenPrice(uint256 _amount) external onlyOwner{
         publicMintPrice = _amount;
+    }
+
+    function setMaxWhitelistSpotForEach(uint16 _amount) external onlyOwner{
+        maxWhitelistSpotForEach = _amount;
     }
 
     function setBaseURI(string memory baseURI_) public onlyOwner {
