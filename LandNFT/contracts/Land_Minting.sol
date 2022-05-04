@@ -2,44 +2,47 @@
 pragma solidity ^0.8.7;
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "./ERC721AUpgradable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "./Land_Signer.sol";
 
 ///@author Anyx
-contract LandNFT is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721AUpgradeable, LandSigner {
+contract LandNFT is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721EnumerableUpgradeable, LandSigner {
 
     string public baseURI;
 
     address public designatedSigner;
     address payable public treasure;
 
-    uint16 public ownerCap;
-    uint16 public whitelistCap;
-    uint16 public maxWhitelistSpotForEach;
+    uint public currentTokenId;
+    uint public ownerCap;
+    uint public whitelistCap;
+    uint public maxWhitelistSpotForEach;
 
-    uint256 public ownerMinted;
-    uint256 public whiteListMinted;
-    uint256 public publicMinted;
+    uint public ownerMinted;
+    uint public whiteListMinted;
+    uint public publicMinted;
 
-    uint256 public maxSupply;
-    uint256 public whitelistSpotPrice;
-    uint256 public publicMintPrice;
+    uint public maxSupply;
+    uint public whitelistSpotPrice;
+    uint public publicMintPrice;
 
-    uint256 public whitelistStartTime;
-    uint256 public whitelistEndTime;
+    uint public whitelistStartTime;
+    uint public whitelistEndTime;
 
-    mapping(address => uint256) public userWhiteListSpotBought;
+    mapping(address => uint) public userWhiteListSpotBought;
 
-    function initialize(string memory _name, string memory _symbol, uint256 _startTime,
+    function initialize(string memory _name, string memory _symbol, uint _startTime,
         address payable _treasure, address _designatedSigner) public initializer {
         require(_treasure != address(0), "Invalid Treasure Address");
         require(_designatedSigner != address(0), "Invalid designated signer address");
 
-        __ERC721A_init(_name, _symbol);
+        __ERC721Enumerable_init();
+        __ERC721_init(_name, _symbol);
         __Ownable_init();
         __ReentrancyGuard_init();
         __LandSigner_init();
 
+        currentTokenId = 1;
         maxSupply = 5555;
         ownerCap = 50;
         whitelistCap = 50;
@@ -58,14 +61,17 @@ contract LandNFT is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721AUpgra
     ///@notice Minting Functions ///
     ///////////////////////////////
 
-    function ownerMint(uint256 _amount, address _to) external onlyOwner nonReentrant{
+    function ownerMint(uint _amount, address _to) external onlyOwner nonReentrant{
         require(_amount + ownerMinted <= ownerCap, "Owner Mint Limit Exceeded");
         require(_amount + totalSupply() <= maxSupply, "All Tokens Minted");
         ownerMinted += _amount;
-        _mint(_to, _amount);
+        for(uint i = 0; i < _amount; i++){
+            _mint(_to, currentTokenId);
+            currentTokenId++;
+        }
     }
 
-    function whiteListMint(WhiteList memory whitelist, uint256 _amount) external payable nonReentrant{
+    function whiteListMint(WhiteList memory whitelist, uint _amount) external payable nonReentrant{
         require(block.timestamp >= whitelistStartTime && block.timestamp <= whitelistEndTime, "Whitelist Period Over");
         require(_amount + whiteListMinted <= whitelistCap, "Whitelist Mint Limit Exceeded");
         require(_amount + userWhiteListSpotBought[whitelist.userAddress] <= maxWhitelistSpotForEach,
@@ -74,15 +80,21 @@ contract LandNFT is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721AUpgra
         require(msg.value == _amount * whitelistSpotPrice, "Pay Exact Amount");
         whiteListMinted += _amount;
         userWhiteListSpotBought[whitelist.userAddress] += _amount;
-        _mint(whitelist.userAddress, _amount);
+        for(uint i = 0; i < _amount; i++){
+            _mint(whitelist.userAddress, currentTokenId);
+            currentTokenId++;
+        }
     }
 
-    function publicMint(uint256 _amount) external payable nonReentrant{
+    function publicMint(uint _amount) external payable nonReentrant{
         require(block.timestamp >= whitelistEndTime, "Whitelist Period Not Over");
         require(_amount + totalSupply() <= maxSupply, "All Tokens Minted");
         require(msg.value == _amount * publicMintPrice, "Pay Exact Amount");
         publicMinted += _amount;
-        _mint(_msgSender(), _amount);
+        for(uint i = 0; i < _amount; i++){
+            _mint(_msgSender(), currentTokenId);
+            currentTokenId++;
+        }
     }
 
     //////////////////////////////
@@ -114,27 +126,27 @@ contract LandNFT is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721AUpgra
         designatedSigner = _signer;
     }
 
-    function setOwnerCap(uint16 _amount) external onlyOwner {
+    function setOwnerCap(uint _amount) external onlyOwner {
         ownerCap = _amount;
     }
 
-    function setWhiteListCap(uint16 _amount) external onlyOwner {
+    function setWhiteListCap(uint _amount) external onlyOwner {
         whitelistCap = _amount;
     }
 
-    function setMaxSupply(uint256 _amount) external onlyOwner {
+    function setMaxSupply(uint _amount) external onlyOwner {
         maxSupply = _amount;
     }
 
-    function setWhitelistTokenPrice(uint256 _amount) external onlyOwner{
+    function setWhitelistTokenPrice(uint _amount) external onlyOwner{
         whitelistSpotPrice = _amount;
     }
 
-    function setPublicMintTokenPrice(uint256 _amount) external onlyOwner{
+    function setPublicMintTokenPrice(uint _amount) external onlyOwner{
         publicMintPrice = _amount;
     }
 
-    function setMaxWhitelistSpotForEach(uint16 _amount) external onlyOwner{
+    function setMaxWhitelistSpotForEach(uint _amount) external onlyOwner{
         maxWhitelistSpotForEach = _amount;
     }
 
@@ -146,10 +158,6 @@ contract LandNFT is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721AUpgra
     ////////////////////////////////////
     ///@notice Overridden Functions ///
     //////////////////////////////////
-
-    function _startTokenId() internal view virtual override returns (uint256) {
-        return 1;
-    }
 
     function _baseURI() internal view virtual override returns (string memory) {
         return baseURI;
